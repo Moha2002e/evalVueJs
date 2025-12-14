@@ -66,6 +66,9 @@ onMounted(async () => {
 // Calculés
 const consultationsFiltrees = computed(() => {
   return consultations.value.filter(c => {
+    // Filtrer les consultations déjà réservées
+    if (c.patient_id || c.patientId) return false;
+
     let correspond = true;
     
     // Filtrer par Médecin
