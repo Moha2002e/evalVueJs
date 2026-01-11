@@ -1,8 +1,15 @@
-import { ApiClient } from './ApiClient';
 import type { Medecin } from '../models';
+export class MedecinDAO {
 
-export class MedecinDAO extends ApiClient {
+    private adresseApi = '/api';
+
     async obtenirTout(): Promise<Medecin[]> {
-        return this.get<Medecin[]>('/doctors');
+        const adresseComplete = `${this.adresseApi}/doctors`;
+
+        // On récupère la liste des médecins
+        const reponseServeur = await fetch(adresseComplete);
+
+        // On retourne la réponse en JSON
+        return await reponseServeur.json();
     }
 }

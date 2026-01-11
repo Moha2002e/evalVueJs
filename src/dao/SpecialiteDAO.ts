@@ -1,8 +1,16 @@
-import { ApiClient } from './ApiClient';
 import type { Specialite } from '../models';
 
-export class SpecialiteDAO extends ApiClient {
+export class SpecialiteDAO {
+
+    private adresseApi = '/api';
+
     async obtenirTout(): Promise<Specialite[]> {
-        return this.get<Specialite[]>('/specialties');
+        const adresseComplete = `${this.adresseApi}/specialties`;
+
+        // On récupère la liste des spécialités
+        const reponseServeur = await fetch(adresseComplete);
+
+        // On retourne la réponse en JSON
+        return await reponseServeur.json();
     }
 }

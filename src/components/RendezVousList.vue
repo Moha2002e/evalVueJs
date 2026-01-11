@@ -14,61 +14,86 @@ const emit = defineEmits<{
   (e: 'open-booking'): void;
 }>();
 
-const consultations = ref<Consultation[]>([]);
-const medecins = ref<Medecin[]>([]);
-const specialites = ref<Specialite[]>([]);
-const chargement = ref(false);
-const idSelectionne = ref<number | null>(null);
+// Variables de données
+const listeRendezVous = ref<Consultation[]>([]);
+const listeMedecins = ref<Medecin[]>([]);
+const listeSpecialites = ref<Specialite[]>([]);
+const enChargement = ref(false);
+const idRendezVousSelectionne = ref<number | null>(null);
 
+// Nos assistants communication serveur
 const consultationDAO = new ConsultationDAO();
 const medecinDAO = new MedecinDAO();
 const specialiteDAO = new SpecialiteDAO();
 
+// Fonction pour récupérer les infos
 const chargerDonnees = async () => {
-  chargement.value = true;
+  enChargement.value = true;
   try {
-    const [cons, meds, specs] = await Promise.all([
+    const [mesRdv, medecins, specialites] = await Promise.all([
       consultationDAO.obtenirParPatient(props.patientId),
       medecinDAO.obtenirTout(),
       specialiteDAO.obtenirTout()
     ]);
-    consultations.value = cons;
-    medecins.value = meds;
-    specialites.value = specs;
-  } catch (e) {
-    console.error('Erreur chargement', e);
+
+    listeRendezVous.value = mesRdv;
+    listeMedecins.value = medecins;
+    listeSpecialites.value = specialites;
+
+  } catch (erreur) {
+    console.error('Erreur chargement', erreur);
   } finally {
-    chargement.value = false;
+    enChargement.value = false;
   }
 };
 
+// On lance le chargement à l'ouverture du composant
 onMounted(chargerDonnees);
 
-// Helpers pour l'affichage
-const getNomMedecin = (id: number) => {
-  const m = medecins.value.find(x => x.id === id);
-  return m ? `${m.last_name} ${m.first_name}` : id;
+// Fonction pour avoir le nom du médecin
+const obtenirNomMedecin = (idMedecin: number) => {
+  const leMedecin = listeMedecins.value.find(m => m.id === idMedecin);
+  if (leMedecin) {
+    return `${leMedecin.last_name} ${leMedecin.first_name}`;
+  }
+  return idMedecin;
 };
 
-const getNomSpecialite = (docId: number) => {
-  const m = medecins.value.find(x => x.id === docId);
-  if (!m) return '-';
-  const s = specialites.value.find(x => x.id === m.specialite_id);
-  return s ? s.name : '-';
+// Fonction pour avoir le nom de la spécialité
+const obtenirNomSpecialite = (idMedecin: number) => {
+  const leMedecin = listeMedecins.value.find(m => m.id === idMedecin);
+  if (!leMedecin) return '-';
+
+  const laSpecialite = listeSpecialites.value.find(s => s.id === leMedecin.specialite_id);
+  if (laSpecialite) {
+    return laSpecialite.name;
+  }
+  return '-';
 };
 
-const selectionner = (id: number) => {
-  idSelectionne.value = (idSelectionne.value === id) ? null : id;
+// Sélectionner un rendez-vous (ligne)
+const choisirRendezVous = (id: number) => {
+  if (idRendezVousSelectionne.value === id) {
+    idRendezVousSelectionne.value = null;
+  } else {
+    idRendezVousSelectionne.value = id;
+  }
 };
 
+// Supprimer le rendez-vous sélectionné
 const supprimerSelection = async () => {
-  if (!idSelectionne.value) return;
+  if (!idRendezVousSelectionne.value) return;
+
   if (confirm("Voulez-vous vraiment supprimer ce rendez-vous ?")) {
     try {
-      await consultationDAO.supprimer(idSelectionne.value);
+      await consultationDAO.supprimer(idRendezVousSelectionne.value);
+      
+      // On recharge la liste pour voir la suppression
       await chargerDonnees();
-      idSelectionne.value = null;
-    } catch (e) {
+      
+      // On désélectionne
+      idRendezVousSelectionne.value = null;
+    } catch (erreur) {
       alert("Erreur lors de la suppression");
     }
   }
@@ -94,35 +119,35 @@ const supprimerSelection = async () => {
         </thead>
         <tbody>
           <tr 
-            v-for="(c, index) in consultations" 
-            :key="c.id" 
+            v-for="(rdv, index) in listeRendezVous" 
+            :key="rdv.id" 
             :data-index="index"
-            @click="selectionner(c.id)"
-            :class="{ selected: idSelectionne === c.id }"
+            @click="choisirRendezVous(rdv.id)"
+            :class="{ selected: idRendezVousSelectionne === rdv.id }"
             class="table-row-animated"
           >
             <td>
               <div class="datetime">
-                <span class="date">{{ c.date }}</span>
-                <span class="time">{{ c.hour }}</span>
+                <span class="date">{{ rdv.date }}</span>
+                <span class="time">{{ rdv.hour }}</span>
               </div>
             </td>
-            <td class="font-bold">{{ getNomMedecin(c.doctor_id) }}</td>
-            <td><span class="tag-specialite">{{ getNomSpecialite(c.doctor_id) }}</span></td>
+            <td class="font-bold">{{ obtenirNomMedecin(rdv.doctor_id) }}</td>
+            <td><span class="tag-specialite">{{ obtenirNomSpecialite(rdv.doctor_id) }}</span></td>
             <td>
               <div class="radio-indicator">
                 <transition name="radio-dot">
-                  <div class="dot" v-if="idSelectionne === c.id"></div>
+                  <div class="dot" v-if="idRendezVousSelectionne === rdv.id"></div>
                 </transition>
               </div>
             </td>
           </tr>
-          <tr v-if="consultations.length === 0 && !chargement" class="empty-state-row">
+          <tr v-if="listeRendezVous.length === 0 && !enChargement" class="empty-state-row">
             <td colspan="4" class="empty-state">
               Vous n'avez aucun rendez-vous prévu pour le moment.
             </td>
           </tr>
-          <tr v-if="chargement" class="loading-state-row">
+          <tr v-if="enChargement" class="loading-state-row">
              <td colspan="4" class="loading-state">
                <div class="loading-animation">
                  <span></span><span></span><span></span>
@@ -138,7 +163,7 @@ const supprimerSelection = async () => {
       <button 
         class="btn-danger" 
         @click="supprimerSelection" 
-        :disabled="!idSelectionne"
+        :disabled="!idRendezVousSelectionne"
       >
         <span class="icon">🗑️</span> Supprimer
       </button>

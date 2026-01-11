@@ -14,75 +14,105 @@ const emit = defineEmits<{
   (e: 'cancel'): void;
 }>();
 
-const consultations = ref<Consultation[]>([]);
-const medecins = ref<Medecin[]>([]);
-const specialites = ref<Specialite[]>([]);
-const chargement = ref(false);
+// Variables simples en français
+const listeConsultations = ref<Consultation[]>([]);
+const listeMedecins = ref<Medecin[]>([]);
+const listeSpecialites = ref<Specialite[]>([]);
+const enChargement = ref(false);
 
-const filterSpecialite = ref<number | null>(null);
-const filterMedecin = ref<number | null>(null);
-const idSelectionne = ref<number | null>(null);
+// Filtres
+const filtreSpecialite = ref<number | null>(null);
+const filtreMedecin = ref<number | null>(null);
+const idConsultationSelectionnee = ref<number | null>(null);
 
+// Nos "assistants" pour communiquer avec le serveur (DAOs)
 const consultationDAO = new ConsultationDAO();
 const medecinDAO = new MedecinDAO();
 const specialiteDAO = new SpecialiteDAO();
 
+// Au chargement de la page
 onMounted(async () => {
-  chargement.value = true;
+  enChargement.value = true;
   try {
-    const [cons, meds, specs] = await Promise.all([
-      consultationDAO.obtenirDisponibles(),
-      medecinDAO.obtenirTout(),
-      specialiteDAO.obtenirTout()
-    ]);
-    consultations.value = cons;
-    medecins.value = meds;
-    specialites.value = specs;
-  } catch (e) {
-    console.error(e);
+    // On récupère toutes les données nécessaires
+    const consultations = await consultationDAO.obtenirDisponibles();
+    const medecins = await medecinDAO.obtenirTout();
+    const specialites = await specialiteDAO.obtenirTout();
+
+    // On remplit nos listes
+    listeConsultations.value = consultations;
+    listeMedecins.value = medecins;
+    listeSpecialites.value = specialites;
+  } catch (erreur) {
+    console.error(erreur);
   } finally {
-    chargement.value = false;
+    enChargement.value = false;
   }
 });
 
-// Filtrage
-const listeFiltree = computed(() => {
-  return consultations.value.filter(c => {
-    let ok = true;
-    if (filterMedecin.value && c.doctor_id !== filterMedecin.value) ok = false;
-    
-    if (filterSpecialite.value) {
-      const doc = medecins.value.find(m => m.id === c.doctor_id);
-      if (doc && doc.specialite_id !== filterSpecialite.value) ok = false;
+// Calcul de la liste filtrée à afficher
+const listeAffichee = computed(() => {
+  return listeConsultations.value.filter(consultation => {
+    let garder = true;
+
+    // Si on filtre par médecin
+    if (filtreMedecin.value && consultation.doctor_id !== filtreMedecin.value) {
+      garder = false;
     }
-    return ok;
+    
+    // Si on filtre par spécialité
+    if (filtreSpecialite.value) {
+      const leMedecin = listeMedecins.value.find(m => m.id === consultation.doctor_id);
+      if (leMedecin && leMedecin.specialite_id !== filtreSpecialite.value) {
+        garder = false;
+      }
+    }
+    return garder;
   });
 });
 
-const getNomMedecin = (id: number) => {
-  const m = medecins.value.find(x => x.id === id);
-  return m ? `${m.last_name} ${m.first_name}` : id;
+// Fonction pour avoir le nom du médecin facilement
+const obtenirNomMedecin = (idMedecin: number) => {
+  const leMedecin = listeMedecins.value.find(m => m.id === idMedecin);
+  if (leMedecin) {
+    return `${leMedecin.last_name} ${leMedecin.first_name}`;
+  }
+  return idMedecin; // Au cas où on ne trouve pas
 };
 
-const getNomSpecialite = (docId: number) => {
-  const m = medecins.value.find(x => x.id === docId);
-  if (!m) return '-';
-  const s = specialites.value.find(x => x.id === m.specialite_id);
-  return s ? s.name : '-';
+// Fonction pour avoir le nom de la spécialité
+const obtenirNomSpecialite = (idMedecin: number) => {
+  const leMedecin = listeMedecins.value.find(m => m.id === idMedecin);
+  if (!leMedecin) return '-';
+
+  const laSpecialite = listeSpecialites.value.find(s => s.id === leMedecin.specialite_id);
+  if (laSpecialite) {
+    return laSpecialite.name;
+  }
+  return '-';
 };
 
-const selectionner = (id: number) => {
-  idSelectionne.value = (idSelectionne.value === id) ? null : id;
+// Sélectionner une ligne
+const choisirConsultation = (id: number) => {
+  if (idConsultationSelectionnee.value === id) {
+    // Si on clique sur la même, on désélectionne
+    idConsultationSelectionnee.value = null;
+  } else {
+    idConsultationSelectionnee.value = id;
+  }
 };
 
-const reserver = async () => {
-  if (!idSelectionne.value) return;
+// Valider la réservation
+const validerReservation = async () => {
+  if (!idConsultationSelectionnee.value) return;
+
   const motif = prompt("Veuillez entrer le motif du rendez-vous :");
   if (motif) {
     try {
-      await consultationDAO.reserver(idSelectionne.value, props.patientId, motif);
+      await consultationDAO.reserver(idConsultationSelectionnee.value, props.patientId, motif);
+      // On prévient le parent (l'application principale) que c'est bon
       emit('reserve');
-    } catch (e) {
+    } catch (erreur) {
       alert("Erreur lors de la réservation");
     }
   }
@@ -101,9 +131,9 @@ const reserver = async () => {
       <div class="filter-group">
         <label>🩺 Spécialité</label>
         <div class="select-wrapper">
-          <select v-model="filterSpecialite" @change="idSelectionne = null">
+          <select v-model="filtreSpecialite" @change="idConsultationSelectionnee = null">
             <option :value="null">Toutes les spécialités</option>
-            <option v-for="s in specialites" :key="s.id" :value="s.id">{{ s.name }}</option>
+            <option v-for="s in listeSpecialites" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select>
         </div>
       </div>
@@ -111,9 +141,9 @@ const reserver = async () => {
       <div class="filter-group">
         <label>👨‍⚕️ Médecin</label>
         <div class="select-wrapper">
-          <select v-model="filterMedecin" @change="idSelectionne = null">
+          <select v-model="filtreMedecin" @change="idConsultationSelectionnee = null">
             <option :value="null">Tous les médecins</option>
-            <option v-for="m in medecins" :key="m.id" :value="m.id">{{ m.last_name }} {{ m.first_name }}</option>
+            <option v-for="m in listeMedecins" :key="m.id" :value="m.id">{{ m.last_name }} {{ m.first_name }}</option>
           </select>
         </div>
       </div>
@@ -131,30 +161,30 @@ const reserver = async () => {
         </thead>
         <tbody>
           <tr 
-            v-for="(c, index) in listeFiltree" 
-            :key="c.id" 
+            v-for="(consultation, index) in listeAffichee" 
+            :key="consultation.id" 
             :data-index="index"
-            @click="selectionner(c.id)"
-            :class="{ active: idSelectionne === c.id }"
+            @click="choisirConsultation(consultation.id)"
+            :class="{ active: idConsultationSelectionnee === consultation.id }"
             class="booking-row-animated"
           >
             <td>
               <div class="datetime">
-                <span class="date">{{ c.date }}</span>
-                <span class="time">{{ c.hour }}</span>
+                <span class="date">{{ consultation.date }}</span>
+                <span class="time">{{ consultation.hour }}</span>
               </div>
             </td>
-            <td><strong>{{ getNomMedecin(c.doctor_id) }}</strong></td>
-            <td><span class="badge">{{ getNomSpecialite(c.doctor_id) }}</span></td>
+            <td><strong>{{ obtenirNomMedecin(consultation.doctor_id) }}</strong></td>
+            <td><span class="badge">{{ obtenirNomSpecialite(consultation.doctor_id) }}</span></td>
             <td>
               <div class="radio-indicator">
                 <transition name="radio-pulse">
-                  <div class="dot" v-if="idSelectionne === c.id"></div>
+                  <div class="dot" v-if="idConsultationSelectionnee === consultation.id"></div>
                 </transition>
               </div>
             </td>
           </tr>
-          <tr v-if="listeFiltree.length === 0 && !chargement" class="empty-state-row">
+          <tr v-if="listeAffichee.length === 0 && !enChargement" class="empty-state-row">
             <td colspan="4" class="empty-state">Aucun créneau disponible pour ces critères.</td>
           </tr>
         </tbody>
@@ -163,7 +193,7 @@ const reserver = async () => {
 
     <div class="footer-actions">
       <button class="btn-secondary" @click="$emit('cancel')">Annuler</button>
-      <button class="btn-primary" @click="reserver" :disabled="!idSelectionne">
+      <button class="btn-primary" @click="validerReservation" :disabled="!idConsultationSelectionnee">
         Confirmer la réservation
       </button>
     </div>

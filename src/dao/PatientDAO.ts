@@ -1,26 +1,42 @@
-import { ApiClient } from './ApiClient';
 import type { Patient } from '../models';
 
-export class PatientDAO extends ApiClient {
+export class PatientDAO {
+
+    private adresseApi = '/api';
 
     async connecterPatient(nom: string, prenom: string, dateNaissance: string, numeroPatient: number | null, nouveauPatient: boolean): Promise<Patient> {
-        const payload = {
+        // On prépare les données à envoyer
+        const donneesPatientAEnvoyer = {
             lastName: nom,
             firstName: prenom,
             birthDate: dateNaissance,
             newPatient: String(nouveauPatient)
         };
 
-        const response = await this.post<{ success: boolean; patientId: number }>('/patients', payload);
+        const adresseComplete = `${this.adresseApi}/patients`;
 
-        if (response.success) {
+        // On fait l'appel POST
+        const reponseServeur = await fetch(adresseComplete, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(donneesPatientAEnvoyer)
+        });
+
+        // On traite la réponse
+        const reponseJson = await reponseServeur.json();
+
+        // Si l'API nous renvoie un succès
+        if (reponseJson.success) {
             return {
-                id: response.patientId,
+                id: reponseJson.patientId,
                 nom: nom,
                 prenom: prenom,
                 dateNaissance: dateNaissance
             };
         } else {
+            // Sinon on lève une erreur
             throw new Error("Échec de l'authentification");
         }
     }

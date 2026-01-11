@@ -1,30 +1,59 @@
-import { ApiClient } from './ApiClient';
 import type { Consultation } from '../models';
+export class ConsultationDAO {
 
-export class ConsultationDAO extends ApiClient {
+    // On définit l'adresse de base de l'API ici pour faire simple
+    private adresseApi = '/api';
 
-    // Obtenir les consultations réservées par le patient
-    async obtenirParPatient(patientId: number): Promise<Consultation[]> {
-        return this.get<Consultation[]>(`/consultations?patientId=${patientId}`);
+    // Obtenir les consultations d'un patient
+    async obtenirParPatient(idPatient: number): Promise<Consultation[]> {
+        // 1. On prépare l'URL avec le paramètre
+        const adresseComplete = `${this.adresseApi}/consultations?patientId=${idPatient}`;
+
+        // 2. On fait l'appel au serveur (GET)
+        const reponseServeur = await fetch(adresseComplete);
+
+        // 3. On récupère les données en JSON
+        const listeConsultations = await reponseServeur.json();
+
+        // 4. On renvoie la liste
+        return listeConsultations;
     }
 
-    // Obtenir les créneaux disponibles (ceux qui n'ont pas de patientId assigné)
+    // Obtenir les créneaux libres
     async obtenirDisponibles(): Promise<Consultation[]> {
-        return this.get<Consultation[]>('/consultations');
+        const adresseComplete = `${this.adresseApi}/consultations`;
+
+        const reponseServeur = await fetch(adresseComplete);
+        const listeConsultations = await reponseServeur.json();
+
+        return listeConsultations;
     }
 
-    // Réserver : PUT sur /consultations?id=... avec body { patientId, reason }
-    async reserver(consultationId: number, patientId: number, motif: string): Promise<void> {
-        const payload = {
-            patientId: patientId, // Backend attend number ou string parsable
-            reason: motif
+    // Réserver un créneau
+    async reserver(idConsultation: number, idPatient: number, motifRendezVous: string): Promise<void> {
+        const adresseComplete = `${this.adresseApi}/consultations?id=${idConsultation}`;
+
+        // On prépare les données à envoyer
+        const donneesReservation = {
+            patientId: idPatient,
+            reason: motifRendezVous
         };
-        // L'ID est passé en query param selon le handler (gererPut -> obtenirParametresRequete -> id)
-        await this.put<{ success: boolean }>(`/consultations?id=${consultationId}`, payload);
+
+        // On envoie la requête PUT avec les données
+        await fetch(adresseComplete, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(donneesReservation)
+        });
     }
 
-    // Annuler : DELETE sur /consultations?id=...
-    async supprimer(consultationId: number): Promise<void> {
-        await this.delete(`/consultations?id=${consultationId}`);
+    // Annuler une réservation
+    async supprimer(idConsultation: number): Promise<void> {
+        const adresseComplete = `${this.adresseApi}/consultations?id=${idConsultation}`;
+
+        // On envoie la requête DELETE
+        await fetch(adresseComplete, {
+            method: 'DELETE'
+        });
     }
 }

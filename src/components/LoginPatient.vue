@@ -7,33 +7,39 @@ const emit = defineEmits<{
   (e: 'login', patient: Patient): void;
 }>();
 
+// Variables du formulaire
 const nom = ref('');
 const prenom = ref('');
 const dateNaissance = ref('');
 const numeroPatient = ref<number | null>(null);
-const nouveauPatient = ref(false);
-const erreur = ref('');
-const chargement = ref(false);
+const estNouveauPatient = ref(false);
+const messageErreur = ref('');
+const enChargement = ref(false);
 
 const patientDAO = new PatientDAO();
 
+// Fonction appelée quand on clique sur "Se connecter"
 const gererConnexion = async () => {
-  erreur.value = '';
-  chargement.value = true;
+  messageErreur.value = '';
+  enChargement.value = true;
+  
   try {
-    const p = await patientDAO.connecterPatient(
+    const lePatient = await patientDAO.connecterPatient(
       nom.value, 
       prenom.value, 
       dateNaissance.value,
       numeroPatient.value, 
-      nouveauPatient.value
+      estNouveauPatient.value
     );
-    emit('login', p);
-  } catch (e: any) {
-    console.error(e);
-    erreur.value = e.message || 'Erreur de connexion';
+    
+    // Si tout est bon, on envoie l'événement au parent
+    emit('login', lePatient);
+    
+  } catch (erreur: any) {
+    console.error(erreur);
+    messageErreur.value = erreur.message || 'Erreur de connexion';
   } finally {
-    chargement.value = false;
+    enChargement.value = false;
   }
 };
 </script>
@@ -123,22 +129,22 @@ const gererConnexion = async () => {
         </div>
 
         <div class="checkbox-group">
-          <input type="checkbox" id="nouveau" v-model="nouveauPatient" />
+          <input type="checkbox" id="nouveau" v-model="estNouveauPatient" />
           <label for="nouveau">Je suis un nouveau patient</label>
         </div>
 
-        <div class="input-group transition-height" v-if="!nouveauPatient">
+        <div class="input-group transition-height" v-if="!estNouveauPatient">
           <label for="numeroPatient">Numéro Patient</label>
           <input id="numeroPatient" v-model="numeroPatient" type="number" placeholder="Ex: 123456" required />
         </div>
 
-        <button type="submit" class="btn-primary" :disabled="chargement">
-          <span v-if="chargement" class="spinner"></span>
+        <button type="submit" class="btn-primary" :disabled="enChargement">
+          <span v-if="enChargement" class="spinner"></span>
           <span v-else>Se connecter</span>
         </button>
 
-        <div v-if="erreur" class="error-banner">
-          {{ erreur }}
+        <div v-if="messageErreur" class="error-banner">
+          {{ messageErreur }}
         </div>
       </form>
     </div>
