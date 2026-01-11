@@ -54,7 +54,7 @@ const fermerDisponibles = () => {
 
       <main class="main-content">
         <!-- Composant 1 : Login -->
-        <section class="section-login" :class="{ 'minimized': utilisateurCourant }">
+        <section class="section-login" v-if="!utilisateurCourant">
           <LoginPatient @login="gererConnexion" />
         </section>
 
@@ -170,14 +170,11 @@ const fermerDisponibles = () => {
 }
 
 /* État minimisé : On cache le login quand connecté, ou on le réduit */
+/* État minimisé : On laisse le composant visible mais on peut changer son style si voulu */
 .section-login.minimized {
-  /* Option A : On le cache complètement avec une belle animation */
-  opacity: 0;
-  height: 0;
-  transform: translateY(-20px);
-  overflow: hidden;
-  margin: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: none; /* On empêche de modifier pendant qu'on est connecté */
+  filter: grayscale(1); /* Petit effet visuel pour dire "inactif" */
 }
 
 .dashboard-zone {

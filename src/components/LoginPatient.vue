@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { PatientDAO } from '../dao/PatientDAO';
 import type { Patient } from '../models';
 
+//bouton login
 const emit = defineEmits<{
   (e: 'login', patient: Patient): void;
 }>();
@@ -28,7 +29,7 @@ const gererConnexion = async () => {
       nom.value, 
       prenom.value, 
       dateNaissance.value,
-      numeroPatient.value, 
+      numeroPatient.value,
       estNouveauPatient.value
     );
     
@@ -127,6 +128,8 @@ const gererConnexion = async () => {
           <label for="dateNaissance">Date de naissance</label>
           <input id="dateNaissance" v-model="dateNaissance" type="date" required />
         </div>
+
+
 
         <div class="checkbox-group">
           <input type="checkbox" id="nouveau" v-model="estNouveauPatient" />

@@ -5,32 +5,33 @@ import { MedecinDAO } from '../dao/MedecinDAO';
 import { SpecialiteDAO } from '../dao/SpecialiteDAO';
 import type { Consultation, Medecin, Specialite } from '../models';
 
+//on reçois l'id du patient connecté grace au parent connecté
 const props = defineProps<{
   patientId: number;
 }>();
-
+//signaux à envoyer au parent
 const emit = defineEmits<{
   (e: 'reserve'): void;
   (e: 'cancel'): void;
 }>();
 
-// Variables simples en français
+// Variables réactive (etat du composant)
 const listeConsultations = ref<Consultation[]>([]);
 const listeMedecins = ref<Medecin[]>([]);
 const listeSpecialites = ref<Specialite[]>([]);
-const enChargement = ref(false);
+const enChargement = ref(false);//
 
-// Filtres
+// liés au menu déroulants
 const filtreSpecialite = ref<number | null>(null);
 const filtreMedecin = ref<number | null>(null);
 const idConsultationSelectionnee = ref<number | null>(null);
 
-// Nos "assistants" pour communiquer avec le serveur (DAOs)
+// Dao pour parler avec l'api java
 const consultationDAO = new ConsultationDAO();
 const medecinDAO = new MedecinDAO();
 const specialiteDAO = new SpecialiteDAO();
 
-// Au chargement de la page
+// Au chargement
 onMounted(async () => {
   enChargement.value = true;
   try {

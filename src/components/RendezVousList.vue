@@ -9,7 +9,7 @@ const props = defineProps<{
   patientId: number;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'logout'): void;
   (e: 'open-booking'): void;
 }>();
@@ -114,6 +114,7 @@ const supprimerSelection = async () => {
             <th>Date & Heure</th>
             <th>Médecin</th>
             <th>Spécialité</th>
+            <th>Raison</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -134,6 +135,7 @@ const supprimerSelection = async () => {
             </td>
             <td class="font-bold">{{ obtenirNomMedecin(rdv.doctor_id) }}</td>
             <td><span class="tag-specialite">{{ obtenirNomSpecialite(rdv.doctor_id) }}</span></td>
+            <td class="text-muted">{{ rdv.reason }}</td>
             <td>
               <div class="radio-indicator">
                 <transition name="radio-dot">
@@ -511,7 +513,7 @@ const supprimerSelection = async () => {
 
 .loading-animation span:nth-child(1) { animation-delay: -0.32s; }
 .loading-animation span:nth-child(2) { animation-delay: -0.16s; }
-.loading-animation span:nth-child(3) { animation-delay: 0; }
+.loading-animation span:nth-child(3) { animation-delay: 0s; }
 
 @keyframes loadingBounce {
   0%, 80%, 100% {
